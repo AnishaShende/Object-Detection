@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage> {
   DateTime lastFrameTime = DateTime.now();
   Duration frameDelay = const Duration(milliseconds: 200);
   double zoomLevel = 1.0;
+  bool isProcessing = false; // Add this boolean flag
 
   initCamera() {
     cameraController = CameraController(
@@ -57,6 +58,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   runModel() async {
+    if (isProcessing) {
+      return;
+    }
+    // Set the flag to indicate that a detection is in progress
+    isProcessing = true;
     recognitionsList = await Tflite.detectObjectOnFrame(
       bytesList: cameraImage!.planes.map((plane) {
         return plane.bytes;
@@ -81,9 +87,17 @@ class _HomePageState extends State<HomePage> {
         cameraImage;
       });
     }
+    // Reset the flag after processing is complete
+    isProcessing = false;
   }
 
   adjustZoomLevel() {
+    // Check if already processing a detection
+    if (isProcessing) {
+      return;
+    }
+// Set the flag to indicate that a detection is in progress
+    isProcessing = true;
     if (recognitionsList != null && recognitionsList!.isNotEmpty) {
       double newZoomLevel = calculateZoomLevel(recognitionsList!);
 
@@ -92,7 +106,10 @@ class _HomePageState extends State<HomePage> {
         cameraController?.setZoomLevel(zoomLevel);
       }
     }
+    // Reset the flag after adjusting the zoom level
+    isProcessing = false;
   }
+  // }
 
   double calculateZoomLevel(List recognitionsList) {
     if (recognitionsList.isEmpty) {
@@ -101,7 +118,7 @@ class _HomePageState extends State<HomePage> {
 
     double scaleFactor = 0.0001;
     double averageSize =
-        recognitionsList[0]['rect']['w'] * recognitionsList[0]['rect']['h'];
+        recognitionsList[0]["rect"]["w"] * recognitionsList[0]["rect"]["h"];
     double newZoomLevel = zoomLevel + scaleFactor * averageSize;
 
     // Ensure that the new zoom level is within acceptable bounds
