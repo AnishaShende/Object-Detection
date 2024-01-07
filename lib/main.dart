@@ -1,8 +1,7 @@
 import 'dart:async';
-
-import 'package:tflite_v2/tflite_v2.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:tflite_v2/tflite_v2.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,17 +32,16 @@ class _HomePageState extends State<HomePage> {
   List? recognitionsList;
   DateTime lastFrameTime = DateTime.now();
   Duration frameDelay = const Duration(milliseconds: 200);
-  Duration minFrameInterval = const Duration(milliseconds: 200);
   double zoomLevel = 1.0;
 
-  // Timer? debounceTimer;
-  // Duration debounceDuration = const Duration(milliseconds: 500);
-
   initCamera() {
-    cameraController = CameraController(cameras![0], ResolutionPreset.high);
+    cameraController = CameraController(
+      cameras![0],
+      ResolutionPreset.high,
+    );
     cameraController?.initialize().then((value) {
       setState(() {
-        cameraController?.startImageStream((image) {
+        cameraController?.startImageStream((CameraImage image) {
           // Throttle the frame processing rate
           if (DateTime.now().difference(lastFrameTime) > frameDelay) {
             lastFrameTime = DateTime.now();
@@ -59,17 +57,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   runModel() async {
-    // Cancel any existing debounce timer
-    // debounceTimer?.cancel();
-
-    // DateTime currentTime = DateTime.now();
-    // if (currentTime.difference(lastFrameTime) < minFrameInterval) {
-    //   // Skip processing this frame if it's too soon
-    //   return;
-    // }
-
-// Set a new debounce timer
-    // debounceTimer = Timer(debounceDuration, () async {
     recognitionsList = await Tflite.detectObjectOnFrame(
       bytesList: cameraImage!.planes.map((plane) {
         return plane.bytes;
@@ -89,19 +76,15 @@ class _HomePageState extends State<HomePage> {
 
       // Keep only the object with the highest confidence
       recognitionsList = [recognitionsList![0]];
-
+      // Rect rect = recognitionsList[["rect"]];
       setState(() {
         cameraImage;
       });
     }
-    // });
-    // lastFrameTime = currentTime;
   }
 
   adjustZoomLevel() {
     if (recognitionsList != null && recognitionsList!.isNotEmpty) {
-      // Calculate zoom level based on detected objects
-      // You can customize this logic based on your requirements
       double newZoomLevel = calculateZoomLevel(recognitionsList!);
 
       if (newZoomLevel != zoomLevel) {
@@ -113,33 +96,16 @@ class _HomePageState extends State<HomePage> {
 
   double calculateZoomLevel(List recognitionsList) {
     if (recognitionsList.isEmpty) {
-      // No detected objects, maintain the current zoom level
       return zoomLevel;
     }
 
-    // Calculate the average size of detected objects
-    double totalSize = 0.0;
-    for (var result in recognitionsList) {
-      double width = result['rect']['w'];
-      double height = result['rect']['h'];
-      totalSize += width * height;
-    }
-
-    // Calculate the average size
-    double averageSize = totalSize / recognitionsList.length;
-
-    // You can customize this scaling factor based on your requirements
     double scaleFactor = 0.0001;
-
-    // Adjust the zoom level based on the average size
+    double averageSize =
+        recognitionsList[0]['rect']['w'] * recognitionsList[0]['rect']['h'];
     double newZoomLevel = zoomLevel + scaleFactor * averageSize;
 
     // Ensure that the new zoom level is within acceptable bounds
     newZoomLevel = newZoomLevel.clamp(1.0, 5.0);
-
-    // Debugging prints
-    print('Average Size: $averageSize');
-    print('New Zoom Level: $newZoomLevel');
 
     return newZoomLevel;
   }
@@ -147,14 +113,14 @@ class _HomePageState extends State<HomePage> {
   Future loadModel() async {
     Tflite.close();
     await Tflite.loadModel(
-        model: "assets/ssd_mobilenet.tflite",
-        labels: "assets/ssd_mobilenet.txt");
+      model: "assets/ssd_mobilenet.tflite",
+      labels: "assets/ssd_mobilenet.txt",
+    );
   }
 
   @override
   void initState() {
     super.initState();
-
     loadModel();
     initCamera();
   }
